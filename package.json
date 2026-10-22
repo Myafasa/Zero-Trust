@@ -1,0 +1,25 @@
+{
+  "name": "ZeroTrust",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "seed": "node db/seed.js",
+    "start": "concurrently \"node gateway/index.js\" \"node service-nilai/index.js\" \"node service-transkrip/index.js\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "http-proxy-middleware": "^3.0.7",
+    "jsonwebtoken": "^9.0.3"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
