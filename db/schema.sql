@@ -15,7 +15,7 @@ CREATE TABLE users (
   password_hash TEXT NOT NULL,
   nama          TEXT NOT NULL,
   role          TEXT NOT NULL CHECK (role IN ('mahasiswa','dosen','admin')),
-  nim           TEXT UNIQUE                      -- hanya untuk mahasiswa
+  nim           TEXT UNIQUE
 );
 
 CREATE TABLE devices (
@@ -59,7 +59,7 @@ CREATE TABLE transkrip (
 CREATE TABLE refresh_tokens (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token_hash  TEXT NOT NULL UNIQUE,              -- SHA-256 dari token (token asli tidak disimpan)
+  token_hash  TEXT NOT NULL UNIQUE,
   device_id   TEXT NOT NULL,
   expires_at  TEXT NOT NULL,
   revoked     INTEGER NOT NULL DEFAULT 0,
@@ -75,8 +75,8 @@ CREATE TABLE service_clients (
 CREATE TABLE audit_log (
   id        INTEGER PRIMARY KEY AUTOINCREMENT,
   waktu     TEXT NOT NULL,
-  subjek    TEXT NOT NULL,                       -- user:<id>(role) | service:<client_id> | anonymous
-  endpoint  TEXT NOT NULL,                       -- "METHOD /path"
+  subjek    TEXT NOT NULL,
+  endpoint  TEXT NOT NULL,
   device    TEXT,
   hasil     TEXT NOT NULL CHECK (hasil IN ('allow','deny')),
   alasan    TEXT NOT NULL

@@ -1,5 +1,3 @@
-// POLICY ENGINE (PE) — memutuskan allow/deny berdasarkan: identitas token + atribut dari DATABASE + konteks (waktu).
-// Prinsip: default deny. Mengembalikan { allow, reason, target }.
 const db = require('../shared/db');
 const { withinAccessHours } = require('../shared/time');
 
@@ -14,10 +12,8 @@ const DENY = (reason) => ({ allow: false, reason });
 
 const JAM_MSG = 'di luar jam akses perubahan/finalisasi nilai';
 
-// ---- aturan per endpoint (Tabel 3) ----
 const rules = [
   {
-    // Hanya token service. Token user mana pun (termasuk admin) ditolak.
     method: 'POST', re: /^\/transkrip\/sinkron\/?$/, target: 'transkrip', serviceOnly: true,
     check: ({ subject }) =>
       subject.role === 'service' ? ALLOW('transkrip', 'token service sah untuk sinkron transkrip')
@@ -80,7 +76,6 @@ const rules = [
  * @param {{subject:{id:string,role:string,typ:string}, method:string, path:string, query:object, now?:Date}} req
  */
 function decide({ subject, method, path, query = {}, now = new Date() }) {
-  // Konteks identitas: user diverifikasi ulang ke DB (role di DB = sumber kebenaran).
   let user = null;
   if (subject.typ === 'access') {
     user = q.user.get(Number(subject.id));
@@ -92,7 +87,6 @@ function decide({ subject, method, path, query = {}, now = new Date() }) {
     if (r.method !== method) continue;
     const m = r.re.exec(path);
     if (!m) continue;
-    // Token service hanya sah untuk rule bertanda serviceOnly
     if (subject.typ === 'service' && !r.serviceOnly) return DENY('token service tidak boleh mengakses endpoint ini');
     return r.check({ subject, user, params: m.slice(1), query, now });
   }

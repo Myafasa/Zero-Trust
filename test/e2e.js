@@ -1,7 +1,7 @@
-// Uji end-to-end. Jalankan SETELAH "npm run seed" dan "npm start" (jam akses harus terbuka, atau set 0-24 di .env).
 const config = require('../shared/config');
 const GW = config.urls.gateway;
-let pass = 0, failN = 0;
+let pass = 0;
+let failN = 0;
 
 async function call(method, path, { token, device, body, base = GW, headers = {} } = {}) {
   const h = { ...headers };
@@ -9,7 +9,11 @@ async function call(method, path, { token, device, body, base = GW, headers = {}
   if (device) h['X-Device-ID'] = device;
   if (body) h['Content-Type'] = 'application/json';
   const r = await fetch(base + path, { method, headers: h, body: body ? JSON.stringify(body) : undefined });
-  let data = null; try { data = await r.json(); } catch {}
+  let data = null;
+  try {
+    data = await r.json();
+  } catch {}
+
   return { status: r.status, data };
 }
 function expect(name, cond, extra = '') {
@@ -47,7 +51,6 @@ const login = (u, d) => call('POST', '/auth/login', { body: { username: u, passw
   expect('dosen1 PUT nilai kelas 1 -> 200', (await call('PUT', '/nilai/1', { token: T.d1, device: 'DEV-DOSEN-001', body: { nilai: 90 } })).status === 200);
   expect('dosen2 finalisasi kelas 1 -> 403', (await call('POST', '/kelas/1/finalisasi', { token: T.d2, device: 'DEV-DOSEN-002' })).status === 403);
 
-  // Bypass gateway
   const direct1 = await call('GET', '/nilai', { base: config.urls.nilai, token: T.m });
   expect('akses langsung service tanpa secret -> 403', direct1.status === 403);
   const direct2 = await call('GET', '/nilai', { base: config.urls.nilai, headers: { 'X-Gateway-Secret': config.gatewaySecret } });
@@ -55,7 +58,6 @@ const login = (u, d) => call('POST', '/auth/login', { body: { username: u, passw
   const direct3 = await call('GET', '/nilai', { base: config.urls.nilai, token: 'x.y.z', headers: { 'X-Gateway-Secret': config.gatewaySecret } });
   expect('gateway secret + token palsu -> 401', direct3.status === 401);
 
-  // Sinkron hanya service
   const body = { kelas_id: 1, entries: [{ nim: '247001001', nilai: 90 }] };
   expect('token user (admin) POST sinkron -> 403', (await call('POST', '/transkrip/sinkron', { token: T.a, device: 'DEV-ADMIN-001', body })).status === 403);
   expect('token user (dosen) POST sinkron -> 403', (await call('POST', '/transkrip/sinkron', { token: T.d1, device: 'DEV-DOSEN-001', body })).status === 403);
@@ -65,7 +67,6 @@ const login = (u, d) => call('POST', '/auth/login', { body: { username: u, passw
   expect('token service ke endpoint lain -> 403', (await call('GET', '/nilai', { token: svc.data.access_token })).status === 403);
   expect('sinkron data palsu (belum final) -> 422', (await call('POST', '/transkrip/sinkron', { token: svc.data.access_token, body })).status === 422);
 
-  // Finalisasi -> sinkron via gateway
   const fin = await call('POST', '/kelas/1/finalisasi', { token: T.d1, device: 'DEV-DOSEN-001' });
   expect('dosen1 finalisasi kelas 1 -> 200', fin.status === 200, JSON.stringify(fin));
   expect('PUT nilai final -> 403', (await call('PUT', '/nilai/1', { token: T.d1, device: 'DEV-DOSEN-001', body: { nilai: 50 } })).status === 403);
@@ -74,7 +75,6 @@ const login = (u, d) => call('POST', '/auth/login', { body: { username: u, passw
   expect('mhs1 lihat transkrip mhs2 -> 403', (await call('GET', '/transkrip/247001002', { token: T.m, device: 'DEV-MHS-001' })).status === 403);
   expect('admin lihat transkrip mhs2 -> 200', (await call('GET', '/transkrip/247001002', { token: T.a, device: 'DEV-ADMIN-001' })).status === 200);
 
-  // Refresh / logout
   const rt = mhs1.data.refresh_token;
   const ref = await call('POST', '/auth/refresh', { body: { refresh_token: rt }, device: 'DEV-MHS-001' });
   expect('refresh -> 200 (rotasi)', ref.status === 200);
@@ -86,7 +86,6 @@ const login = (u, d) => call('POST', '/auth/login', { body: { username: u, passw
   expect('logout -> 200', (await call('POST', '/auth/logout', { body: { refresh_token: l2.data.refresh_token } })).status === 200);
   expect('refresh setelah logout -> 401', (await call('POST', '/auth/refresh', { body: { refresh_token: l2.data.refresh_token }, device: 'DEV-MHS-002' })).status === 401);
 
-  // Audit
   const db = require('../shared/db');
   const n = db.prepare('SELECT COUNT(*) c, SUM(hasil=\'allow\') a, SUM(hasil=\'deny\') d FROM audit_log').get();
   expect('audit log terisi (allow & deny)', n.c > 30 && n.a > 0 && n.d > 0, JSON.stringify(n));

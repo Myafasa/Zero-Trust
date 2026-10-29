@@ -16,7 +16,6 @@ const insertRefresh = db.prepare(
   'INSERT INTO refresh_tokens (user_id,token_hash,device_id,expires_at,created_at) VALUES (?,?,?,?,?)'
 );
 
-// Refresh token = JWT (1 hari) + disimpan (hash) di DB agar bisa dicabut.
 function issueRefresh(user, deviceId) {
   const token = sign(
     { typ: 'refresh', jti: crypto.randomUUID() },

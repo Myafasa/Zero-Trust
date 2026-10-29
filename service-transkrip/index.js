@@ -11,7 +11,6 @@ app.use(guard);
 const huruf = (n) => (n >= 80 ? 'A' : n >= 70 ? 'B' : n >= 60 ? 'C' : n >= 50 ? 'D' : 'E');
 const bobot = { A: 4, B: 3, C: 2, D: 1, E: 0 };
 
-// ---- GET /transkrip/:nim ----
 app.get('/transkrip/:nim', requireRole('mahasiswa', 'admin'), (req, res) => {
   if (req.auth.role === 'mahasiswa') {
     const me = db.prepare('SELECT nim FROM users WHERE id = ?').get(Number(req.auth.sub));
@@ -26,13 +25,11 @@ app.get('/transkrip/:nim', requireRole('mahasiswa', 'admin'), (req, res) => {
   res.json({ nim: req.params.nim, total_sks: sks, ipk: ipk === null ? null : Number(ipk.toFixed(2)), mata_kuliah: mk });
 });
 
-// ---- POST /transkrip/sinkron : hanya token service ----
 app.post('/transkrip/sinkron', requireRole('service'), (req, res) => {
   const { kelas_id, entries } = req.body || {};
   if (!Number.isInteger(kelas_id) || !Array.isArray(entries) || entries.length === 0 || entries.length > 500)
     return res.status(400).json({ error: 'kelas_id (integer) dan entries (array) wajib' });
 
-  // Assume breach: data kiriman TIDAK dipercaya begitu saja, dicocokkan dengan DB (nilai harus sudah FINAL & sama).
   const check = db.prepare(
     `SELECT n.nilai, n.status, k.kode, k.nama, k.sks
      FROM nilai n JOIN users u ON u.id = n.mahasiswa_id JOIN kelas k ON k.id = n.kelas_id

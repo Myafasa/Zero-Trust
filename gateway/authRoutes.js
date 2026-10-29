@@ -1,4 +1,3 @@
-// Endpoint /auth/* ditangani langsung oleh gateway (PE/PA): login, refresh, logout, token service.
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -8,7 +7,7 @@ const audit = require('./audit');
 const tokens = require('./tokens');
 
 const router = express.Router();
-const DUMMY_HASH = bcrypt.hashSync('dummy-password', 10); // samakan waktu respons saat user tidak ada
+const DUMMY_HASH = bcrypt.hashSync('dummy-password', 10);
 
 const q = {
   userByName: db.prepare('SELECT * FROM users WHERE username = ?'),
@@ -27,7 +26,6 @@ function respond(res, req, { status, subjek, hasil, alasan, body }) {
 const denyWith = (res, req, status, subjek, alasan, publicMsg) =>
   respond(res, req, { status, subjek, hasil: 'deny', alasan, body: { error: publicMsg || alasan } });
 
-// ---------- POST /auth/login ----------
 router.post('/login', (req, res) => {
   const { username, password } = req.body || {};
   const device = req.get('x-device-id');
@@ -54,7 +52,6 @@ router.post('/login', (req, res) => {
   return respond(res, req, { status: 200, subjek: `user:${user.id}(${user.role})`, hasil: 'allow', alasan: 'login berhasil', body });
 });
 
-// ---------- helper refresh token ----------
 function loadRefresh(req, { detectReuse }) {
   const rt = req.body && req.body.refresh_token;
   if (typeof rt !== 'string') return { status: 400, reason: 'refresh_token tidak ada' };
@@ -69,14 +66,12 @@ function loadRefresh(req, { detectReuse }) {
   const row = q.refresh.get(tokens.hash(rt));
   if (!row) return { status: 401, reason: 'refresh token tidak dikenal' };
   if (row.revoked) {
-    // Token yang sudah dicabut dipakai lagi = indikasi pencurian -> cabut semua sesi user (assume breach)
     if (detectReuse) q.revokeAll.run(row.user_id);
     return { status: 401, reason: detectReuse ? 'refresh token sudah dicabut (reuse terdeteksi, semua sesi dicabut)' : 'refresh token sudah dicabut', subjek: `user:${row.user_id}` };
   }
   return { row, subjek: `user:${row.user_id}` };
 }
 
-// ---------- POST /auth/refresh (rotasi token) ----------
 router.post('/refresh', (req, res) => {
   const r = loadRefresh(req, { detectReuse: true });
   if (!r.row) return denyWith(res, req, r.status, r.subjek || 'anonymous', r.reason);
@@ -88,7 +83,7 @@ router.post('/refresh', (req, res) => {
   const user = q.userById.get(r.row.user_id);
   if (!user) return denyWith(res, req, 401, r.subjek, 'user tidak ditemukan');
 
-  q.revokeOne.run(r.row.id); // token lama langsung hangus
+  q.revokeOne.run(r.row.id);
   const body = {
     access_token: tokens.signAccess(user),
     refresh_token: tokens.issueRefresh(user, device),
@@ -98,7 +93,6 @@ router.post('/refresh', (req, res) => {
   return respond(res, req, { status: 200, subjek: `user:${user.id}(${user.role})`, hasil: 'allow', alasan: 'refresh berhasil', body });
 });
 
-// ---------- POST /auth/logout ----------
 router.post('/logout', (req, res) => {
   const r = loadRefresh(req, { detectReuse: false });
   if (!r.row) return denyWith(res, req, r.status, r.subjek || 'anonymous', r.reason);
@@ -106,7 +100,6 @@ router.post('/logout', (req, res) => {
   return respond(res, req, { status: 200, subjek: r.subjek, hasil: 'allow', alasan: 'logout, refresh token dicabut', body: { message: 'Logout berhasil' } });
 });
 
-// ---------- POST /auth/service (token 5 menit untuk Service Nilai) ----------
 router.post('/service', (req, res) => {
   const { client_id, client_secret } = req.body || {};
   const subjek = `service:${String(client_id ?? '?').slice(0, 50)}`;

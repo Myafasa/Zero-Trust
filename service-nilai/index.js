@@ -7,9 +7,8 @@ const { withinAccessHours } = require('../shared/time');
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '100kb' }));
-app.use(guard); // gateway secret + verifikasi ulang token, untuk SEMUA route
+app.use(guard);
 
-// ---- token service (cache sampai 30 detik sebelum kedaluwarsa) ----
 let cached = { token: null, exp: 0 };
 async function getServiceToken() {
   if (cached.token && Date.now() < cached.exp - 30_000) return cached.token;
@@ -24,7 +23,6 @@ async function getServiceToken() {
   return cached.token;
 }
 
-// ---- GET /nilai : data dibatasi berdasarkan identitas di token (bukan parameter dari client) ----
 app.get('/nilai', requireRole('mahasiswa', 'dosen'), (req, res) => {
   const uid = Number(req.auth.sub);
   let sql = `SELECT n.id, n.nilai, n.status, k.id AS kelas_id, k.kode, k.nama AS kelas, u.nim, u.nama AS mahasiswa
@@ -36,12 +34,14 @@ app.get('/nilai', requireRole('mahasiswa', 'dosen'), (req, res) => {
   } else {
     sql += ' WHERE k.dosen_id = ?';
     params.push(uid);
-    if (req.query.kelas_id !== undefined) { sql += ' AND k.id = ?'; params.push(Number(req.query.kelas_id)); }
+    if (req.query.kelas_id !== undefined) {
+      sql += ' AND k.id = ?';
+      params.push(Number(req.query.kelas_id));
+    }
   }
   res.json(db.prepare(sql + ' ORDER BY k.id, u.nim').all(...params));
 });
 
-// ---- PUT /nilai/:id ----
 app.put('/nilai/:id', requireRole('dosen'), (req, res) => {
   if (!withinAccessHours()) return res.status(403).json({ error: 'Di luar jam akses perubahan nilai' });
   const v = req.body && req.body.nilai;
@@ -60,7 +60,6 @@ app.put('/nilai/:id', requireRole('dosen'), (req, res) => {
   res.json({ id: row.id, nilai: v, status: 'draft' });
 });
 
-// ---- POST /kelas/:id/finalisasi -> sinkron ke Service Transkrip LEWAT GATEWAY dengan token service ----
 app.post('/kelas/:id/finalisasi', requireRole('dosen'), async (req, res) => {
   if (!withinAccessHours()) return res.status(403).json({ error: 'Di luar jam akses finalisasi nilai' });
 
@@ -93,7 +92,7 @@ app.post('/kelas/:id/finalisasi', requireRole('dosen'), async (req, res) => {
     });
     if (!r.ok) throw new Error(`sinkron ditolak (${r.status}): ${await r.text()}`);
   } catch (e) {
-    markAll('draft'); // sinkron gagal -> kembalikan agar nilai & transkrip tidak berbeda
+    markAll('draft');
     console.error('[nilai] finalisasi dibatalkan:', e.message);
     return res.status(502).json({ error: 'Sinkron ke transkrip gagal, finalisasi dibatalkan' });
   }
@@ -107,5 +106,4 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Kesalahan internal' });
 });
 
-// Bind ke loopback: tidak terbuka ke jaringan luar. Tetap dilindungi gateway secret.
 app.listen(config.ports.nilai, '127.0.0.1', () => console.log(`[nilai] Service Nilai di :${config.ports.nilai}`));

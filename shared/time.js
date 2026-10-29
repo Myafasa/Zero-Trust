@@ -7,7 +7,6 @@ function currentHour(now = new Date()) {
   return Number(h);
 }
 
-// 07.00 <= jam < 21.00 (nilai 20:59 masih boleh, 21:00 ditolak). Atur lewat .env.
 function withinAccessHours(now = new Date()) {
   const { start, end } = config.access;
   const h = currentHour(now);

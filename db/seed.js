@@ -1,4 +1,3 @@
-// Membuat ulang database + data awal. Semua password: password123
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -30,12 +29,10 @@ const tx = db.transaction(() => {
     id[username] = Number(r.lastInsertRowid);
   }
 
-  // 2 kelas, diampu dosen berbeda
   const addKelas = db.prepare('INSERT INTO kelas (kode,nama,sks,dosen_id) VALUES (?,?,?,?)');
   const k1 = Number(addKelas.run('IF101', 'Basis Data', 3, id.dosen1).lastInsertRowid);
   const k2 = Number(addKelas.run('IF102', 'Keamanan Informasi', 3, id.dosen2).lastInsertRowid);
 
-  // semua mahasiswa terdaftar di kedua kelas, nilai awal draft
   const addNilai = db.prepare("INSERT INTO nilai (kelas_id,mahasiswa_id,nilai,status,updated_at) VALUES (?,?,?,'draft',?)");
   const now = new Date().toISOString();
   const seedScores = { mhs1: [85, 78], mhs2: [72, 90], mhs3: [64, 81] };

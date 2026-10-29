@@ -7,10 +7,8 @@ const pep = require('./pep');
 const app = express();
 app.disable('x-powered-by');
 
-// Body parser HANYA untuk /auth/*; request ke service diteruskan sebagai stream apa adanya.
 app.use('/auth', express.json({ limit: '10kb' }), authRoutes);
 
-// Proxy ke service. X-Gateway-Secret ditambahkan di sini (nilai kiriman client otomatis tertimpa).
 const makeProxy = (target) =>
   createProxyMiddleware({
     target,
@@ -25,7 +23,6 @@ const makeProxy = (target) =>
   });
 const proxies = { nilai: makeProxy(config.urls.nilai), transkrip: makeProxy(config.urls.transkrip) };
 
-// Semua selain /auth/* -> PEP -> (allow) -> proxy
 app.use(pep);
 app.use((req, res, next) => proxies[req.proxyTarget](req, res, next));
 
