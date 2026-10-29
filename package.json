@@ -10,7 +10,8 @@
     "start:nilai": "node service-nilai/index.js",
     "start:transkrip": "node service-transkrip/index.js",
     "start": "concurrently -n gateway,nilai,transkrip -c blue,green,yellow \"npm:start:gateway\" \"npm:start:nilai\" \"npm:start:transkrip\"",
-    "test": "node test/e2e.js"
+    "test": "node test/e2e.js",
+    "audit": "node scripts/audit.js"
   },
   "engines": {
     "node": ">=18"
@@ -20,7 +21,7 @@
     "better-sqlite3": "^13.0.3",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "http-proxy-middleware": "^3.0.3",
+    "http-proxy-middleware": "^3.0.3",  
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {

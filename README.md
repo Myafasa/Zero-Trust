@@ -15,6 +15,7 @@ npm run setup     # membuat .env berisi secret acak
 npm run seed      # membuat DB + data awal
 npm start         # menjalankan 3 aplikasi sekaligus
 npm test          # uji end-to-end (jam akses harus terbuka, lihat di bawah)
+npm run audit     # 30 catatan terakhir
 ```
 Butuh Node.js 18+ (untuk `fetch` bawaan).
 
